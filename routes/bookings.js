@@ -92,6 +92,93 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+// Update booking
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { roomId, startTime, endTime } = req.body;
+
+    // Find the existing booking
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Users can only update their own bookings, Admins can update any
+    if (req.userRole !== 'Admin' && booking.userId.toString() !== req.userId) {
+      return res.status(403).json({ message: 'You can only update your own bookings' });
+    }
+
+    // Determine which roomId to check (new or existing)
+    const checkRoomId = roomId || booking.roomId;
+
+    // Parse times (use existing times if not provided)
+    const newStartTime = startTime ? new Date(startTime) : booking.startTime;
+    const newEndTime = endTime ? new Date(endTime) : booking.endTime;
+
+    // Validate time range
+    if (newStartTime >= newEndTime) {
+      return res.status(400).json({ message: 'End time must be after start time' });
+    }
+
+    // If roomId is being changed, check if the new room exists
+    if (roomId && roomId !== booking.roomId.toString()) {
+      const room = await Room.findById(roomId);
+      if (!room) {
+        return res.status(404).json({ message: 'Room not found' });
+      }
+    }
+
+    // Check for conflicting bookings - EXCLUDE the current booking being updated
+    const conflictingBooking = await Booking.findOne({
+      roomId: checkRoomId,
+      _id: { $ne: id }, // Exclude the current booking from conflict check
+      $or: [
+        { startTime: { $lt: newEndTime, $gte: newStartTime } },
+        { endTime: { $gt: newStartTime, $lte: newEndTime } },
+        { startTime: { $lte: newStartTime }, endTime: { $gte: newEndTime } }
+      ]
+    });
+
+    if (conflictingBooking) {
+      return res.status(409).json({ 
+        message: 'Room is not available for the selected time period',
+        conflictingBooking
+      });
+    }
+
+    // Update the booking
+    if (roomId) booking.roomId = roomId;
+    if (startTime) booking.startTime = newStartTime;
+    if (endTime) booking.endTime = newEndTime;
+
+    await booking.save();
+
+    // Populate the booking before returning
+    await booking.populate('roomId', 'name capacity type');
+    await booking.populate('userId', 'username role');
+
+    // Emit Socket.io event
+    if (req.app.get('io')) {
+      req.app.get('io').emit('bookingUpdated', {
+        bookingId: booking._id,
+        roomId: booking.roomId,
+        userId: booking.userId,
+        startTime: booking.startTime,
+        endTime: booking.endTime
+      });
+    }
+
+    res.json({
+      message: 'Booking updated successfully',
+      booking
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating booking', error: error.message });
+  }
+});
+
 // Cancel booking
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
