@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const { verifyToken } = require('../middleware/authMiddleware');
@@ -111,7 +112,9 @@ router.put('/:id', verifyToken, async (req, res) => {
     }
 
     // Determine which roomId to check (new or existing)
-    const checkRoomId = roomId || booking.roomId;
+    // Handle both ObjectId and populated roomId
+    const currentRoomId = booking.roomId._id || booking.roomId;
+    const checkRoomId = roomId || currentRoomId;
 
     // Parse times (use existing times if not provided)
     const newStartTime = startTime ? new Date(startTime) : booking.startTime;
@@ -123,7 +126,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     }
 
     // If roomId is being changed, check if the new room exists
-    if (roomId && roomId !== booking.roomId.toString()) {
+    if (roomId && roomId !== currentRoomId.toString()) {
       const room = await Room.findById(roomId);
       if (!room) {
         return res.status(404).json({ message: 'Room not found' });
@@ -133,7 +136,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     // Check for conflicting bookings - EXCLUDE the current booking being updated
     const conflictingBooking = await Booking.findOne({
       roomId: checkRoomId,
-      _id: { $ne: id }, // Exclude the current booking from conflict check
+      _id: { $ne: new mongoose.Types.ObjectId(id) }, // Exclude the current booking from conflict check
       startTime: { $lt: newEndTime },
       endTime: { $gt: newStartTime }
     });
