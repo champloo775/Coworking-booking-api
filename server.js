@@ -9,6 +9,7 @@ const { createClient } = require('redis');
 const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
 const bookingRoutes = require('./routes/bookings');
+const userRoutes = require('./routes/users');
 
 const app = express();
 const httpServer = createServer(app);
@@ -64,7 +65,8 @@ app.get('/', (req, res) => {
     endpoints: {
       auth: '/api/auth',
       rooms: '/api/rooms',
-      bookings: '/api/bookings'
+      bookings: '/api/bookings',
+      users: '/api/users'
     }
   });
 });
@@ -72,6 +74,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
