@@ -20,7 +20,8 @@ router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    const user = await User.findById(id);
+    // Delete user first and check if it exists
+    const user = await User.findByIdAndDelete(id);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -28,9 +29,6 @@ router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
     
     // Delete all bookings associated with user (data integrity)
     await Booking.deleteMany({ userId: id });
-    
-    // Delete user
-    await User.findByIdAndDelete(id);
     
     res.json({ message: 'User and associated bookings deleted successfully' });
   } catch (error) {
