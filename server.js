@@ -28,10 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 app.set('io', io);
 
 // MongoDB connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/coworking-booking', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/coworking-booking')
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -97,16 +94,28 @@ httpServer.listen(PORT, () => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
+const gracefulShutdown = async (signal) => {
+  console.log(`${signal} received. Shutting down gracefully...`);
   
-  if (redisClient) {
-    await redisClient.quit();
+  try {
+    if (redisClient) {
+      await redisClient.quit();
+    }
+  } catch (err) {
+    console.error('Error closing Redis connection:', err);
   }
   
-  await mongoose.connection.close();
+  try {
+    await mongoose.connection.close();
+  } catch (err) {
+    console.error('Error closing MongoDB connection:', err);
+  }
+  
   httpServer.close(() => {
     console.log('Server closed');
     process.exit(0);
   });
-});
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

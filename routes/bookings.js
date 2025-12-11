@@ -29,12 +29,8 @@ router.post('/', verifyToken, async (req, res) => {
     // Check for conflicting bookings
     const conflictingBooking = await Booking.findOne({
       roomId,
-      $or: [
-        {
-          startTime: { $lt: end },
-          endTime: { $gt: start }
-        }
-      ]
+      startTime: { $lt: end },
+      endTime: { $gt: start }
     });
 
     if (conflictingBooking) {
