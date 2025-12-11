@@ -134,11 +134,8 @@ router.put('/:id', verifyToken, async (req, res) => {
     const conflictingBooking = await Booking.findOne({
       roomId: checkRoomId,
       _id: { $ne: id }, // Exclude the current booking from conflict check
-      $or: [
-        { startTime: { $lt: newEndTime, $gte: newStartTime } },
-        { endTime: { $gt: newStartTime, $lte: newEndTime } },
-        { startTime: { $lte: newStartTime }, endTime: { $gte: newEndTime } }
-      ]
+      startTime: { $lt: newEndTime },
+      endTime: { $gt: newStartTime }
     });
 
     if (conflictingBooking) {

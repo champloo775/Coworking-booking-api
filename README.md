@@ -103,6 +103,12 @@ npm run dev
 - Headers: `Authorization: Bearer <token>`
 - Response: User's bookings (or all bookings for Admin)
 
+#### Update Booking
+- **PUT** `/api/bookings/:id`
+- Headers: `Authorization: Bearer <token>`
+- Body: `{ "roomId": "string", "startTime": "ISO date", "endTime": "ISO date" }` (all fields optional)
+- Note: Checks room availability before updating. Users can only update their own bookings
+
 #### Cancel Booking
 - **DELETE** `/api/bookings/:id`
 - Headers: `Authorization: Bearer <token>`
@@ -113,6 +119,9 @@ npm run dev
 ### Emitted Events
 
 - **bookingCreated**: Emitted when a new booking is created
+  - Payload: `{ bookingId, roomId, userId, startTime, endTime }`
+
+- **bookingUpdated**: Emitted when a booking is updated
   - Payload: `{ bookingId, roomId, userId, startTime, endTime }`
 
 - **bookingCancelled**: Emitted when a booking is cancelled
